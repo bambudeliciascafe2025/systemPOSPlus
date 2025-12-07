@@ -19,6 +19,7 @@ import { createOrder } from "@/app/actions/pos"
 import { getCustomerByCedula } from "@/app/actions/customers"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { useOffline } from "@/providers/offline-context"
 
 export function POSInterface({ initialProducts, categories }: { initialProducts: any[], categories: any[] }) {
     const { toast } = useToast()
@@ -97,8 +98,26 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
         })
     }
 
+    const { isOnline, addOrderToQueue } = useOffline()
+
     const handleCheckout = async () => {
         setIsProcessing(true)
+
+        if (!isOnline) {
+            addOrderToQueue({
+                items: cart,
+                totalAmount: cartTotal,
+                paymentMethod,
+                customerId: customer?.id
+            })
+            setCart([])
+            setIsCheckoutOpen(false)
+            setCedula("")
+            setCustomer(null)
+            setIsProcessing(false)
+            return
+        }
+
         const result = await createOrder({
             items: cart,
             total: cartTotal,

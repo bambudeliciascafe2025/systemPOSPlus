@@ -91,14 +91,36 @@ export default async function DashboardPage() {
                 {/* CHART SECTION (Now Client Component) */}
                 <OverviewChart data={chartData} />
 
-                {/* TOP SELLING items (Placeholder) */}
                 <Card className="col-span-3">
                     <CardHeader>
                         <CardTitle>Top Selling Items</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-                            <p>Real-time top items coming soon...</p>
+                        <div className="space-y-4">
+                            {stats?.topSelling?.length === 0 ? (
+                                <p className="text-sm text-muted-foreground text-center py-8">No sales yet.</p>
+                            ) : (
+                                stats?.topSelling?.map((product: any, idx: number) => (
+                                    <div key={idx} className="flex items-center">
+                                        <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center overflow-hidden border">
+                                            {product.image ? (
+                                                <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                                            ) : (
+                                                <span className="text-xs font-bold">{product.name.charAt(0)}</span>
+                                            )}
+                                        </div>
+                                        <div className="ml-4 space-y-1">
+                                            <p className="text-sm font-medium leading-none">{product.name}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {product.count} sales
+                                            </p>
+                                        </div>
+                                        <div className="ml-auto font-medium text-sm">
+                                            +${product.revenue.toFixed(2)}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </CardContent>
                 </Card>

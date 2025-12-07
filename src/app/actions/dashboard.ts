@@ -55,11 +55,47 @@ export async function getDashboardStats() {
 
         const chartData = Array.from(chartDataMap).map(([name, total]) => ({ name, total }))
 
+        // 4. Top Selling Items
+        const { data: allOrderItems, error: itemsError } = await supabase
+            .from("order_items")
+            .select(`
+                quantity,
+                unit_price,
+                products ( name, image_url )
+            `)
+
+        let topSelling: any[] = []
+
+        if (!itemsError && allOrderItems) {
+            const productStats = new Map<string, { name: string, image: string, count: number, revenue: number }>()
+
+            allOrderItems.forEach((item: any) => {
+                if (!item.products) return
+
+                const key = item.products.name
+                const stats = productStats.get(key) || {
+                    name: item.products.name,
+                    image: item.products.image_url,
+                    count: 0,
+                    revenue: 0
+                }
+
+                stats.count += item.quantity
+                stats.revenue += (item.quantity * item.unit_price)
+                productStats.set(key, stats)
+            })
+
+            topSelling = Array.from(productStats.values())
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 5)
+        }
+
         return {
             totalSales,
             totalOrders,
             recentOrders: safeRecentOrders,
-            chartData
+            chartData,
+            topSelling
         }
 
     } catch (e: any) {

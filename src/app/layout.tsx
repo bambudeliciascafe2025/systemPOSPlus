@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { OfflineProvider } from "@/providers/offline-context";
+import { Toaster } from "@/components/ui/toaster";
+import { ConnectionIndicator } from "@/components/dashboard/connection-indicator";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +30,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <OfflineProvider>
+          {children}
+          <ConnectionIndicator />
+          <Toaster />
+        </OfflineProvider>
       </body>
     </html>
   );
