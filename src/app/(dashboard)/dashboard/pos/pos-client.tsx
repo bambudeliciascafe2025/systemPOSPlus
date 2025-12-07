@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Search, ShoppingCart, Trash2, Plus, Minus, CreditCard, Banknote, User } from "lucide-react"
+import { Search, ShoppingCart, Plus, Minus, CreditCard, Banknote, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area" // Need to install if missing
+import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Label } from "@/components/ui/label"
 import {
     Dialog,
     DialogContent,
@@ -16,6 +16,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog"
 import { createOrder } from "@/app/actions/pos"
+import { getCustomerByCedula } from "@/app/actions/customers"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -27,6 +28,29 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
     const [paymentMethod, setPaymentMethod] = useState("CASH")
+
+    // Customer State
+    const [cedula, setCedula] = useState("")
+    const [customer, setCustomer] = useState<any>(null)
+    const [isSearching, setIsSearching] = useState(false)
+
+    async function handleSearchCustomer(term: string) {
+        setCedula(term)
+        if (term.length < 5) {
+            setCustomer(null)
+            return
+        }
+
+        setIsSearching(true)
+        const { customer, error } = await getCustomerByCedula(term)
+        setIsSearching(false)
+
+        if (customer) {
+            setCustomer(customer)
+        } else {
+            setCustomer(null)
+        }
+    }
 
     // Filter Products
     const filteredProducts = useMemo(() => {
@@ -40,7 +64,6 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
 
     // Cart Calculations
     const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-    const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
 
     // Handlers
     const addToCart = (product: any) => {
@@ -52,7 +75,6 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
         setCart(prev => {
             const existing = prev.find(item => item.id === product.id)
             if (existing) {
-                // Check stock limit
                 if (existing.quantity >= product.stock) {
                     toast({ title: "Stock Limit Reached", description: `Only ${product.stock} available.`, variant: "destructive" })
                     return prev
@@ -71,7 +93,6 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
             const newQty = existing.quantity + delta
             if (newQty <= 0) return prev.filter(item => item.id !== id)
 
-            // Stock check logic could go here too but let's assume UI handles adding mostly
             return prev.map(item => item.id === id ? { ...item, quantity: newQty } : item)
         })
     }
@@ -82,7 +103,7 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
             items: cart,
             total: cartTotal,
             paymentMethod,
-            // customerId: ... feature for later
+            customerId: customer?.id
         })
 
         setIsProcessing(false)
@@ -92,6 +113,9 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
             toast({ title: "Order Completed", description: `Order #${result.orderId?.slice(0, 8)} processed.` })
             setCart([])
             setIsCheckoutOpen(false)
+            // Reset customer and cedula after successful checkout
+            setCedula("")
+            setCustomer(null)
         }
     }
 
@@ -256,6 +280,30 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
                         <DialogTitle>Complete Payment</DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="cedula">Customer ID (Cédula)</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    id="cedula"
+                                    placeholder="Enter Cédula (e.g. 12345678)"
+                                    value={cedula}
+                                    onChange={(e) => handleSearchCustomer(e.target.value)}
+                                    autoFocus
+                                    className={!customer && cedula.length > 4 ? "border-red-500 focus-visible:ring-red-500" : ""}
+                                />
+                            </div>
+                            {isSearching && <p className="text-xs text-muted-foreground">Searching...</p>}
+                            {customer && (
+                                <div className="flex items-center gap-2 text-sm text-emerald-600 font-medium bg-emerald-50 p-2 rounded">
+                                    <User className="h-4 w-4" />
+                                    {customer.full_name}
+                                </div>
+                            )}
+                            {!customer && cedula.length > 4 && !isSearching && (
+                                <p className="text-xs text-red-500 font-medium">Customer not found.</p>
+                            )}
+                        </div>
+
                         <div className="flex justify-center p-4 bg-muted/30 rounded-lg">
                             <div className="text-center">
                                 <p className="text-sm text-muted-foreground">Total Amount</p>
@@ -276,7 +324,6 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
                                     {method === 'CASH' && <Banknote className="h-6 w-6" />}
                                     {method === 'CARD' && <CreditCard className="h-6 w-6" />}
                                     {method === 'TRANSFER' && <CreditCard className="h-6 w-6" />}
-                                    {/* Icon reuse for now */}
                                     <span className="text-xs font-bold">{method}</span>
                                 </div>
                             ))}
@@ -287,7 +334,7 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
                         <Button
                             className="bg-emerald-600 w-full md:w-auto"
                             onClick={handleCheckout}
-                            disabled={isProcessing}
+                            disabled={isProcessing || !customer}
                         >
                             {isProcessing ? "Processing..." : "Pay & Print"}
                         </Button>
