@@ -36,12 +36,23 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { createProduct, deleteProduct } from "@/app/actions/inventory"
+import { createProduct, deleteProduct, updateProduct } from "@/app/actions/inventory"
 import { Badge } from "@/components/ui/badge"
 
 export function ProductsClient({ initialProducts, categories }: { initialProducts: any[], categories: any[] }) {
     const [isOpen, setIsOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+    const [editingProduct, setEditingProduct] = useState<any>(null)
+
+    function handleEdit(product: any) {
+        setEditingProduct(product)
+        setIsOpen(true)
+    }
+
+    function openNew() {
+        setEditingProduct(null)
+        setIsOpen(true)
+    }
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault()
@@ -50,7 +61,9 @@ export function ProductsClient({ initialProducts, categories }: { initialProduct
 
         // In a real app we'd handle image file upload here (get presigned URL, upload, get public URL)
 
-        const result = await createProduct(formData)
+        const result = editingProduct
+            ? await updateProduct(formData)
+            : await createProduct(formData)
 
         setIsLoading(false)
         if (result.error) {
@@ -71,32 +84,34 @@ export function ProductsClient({ initialProducts, categories }: { initialProduct
             <div className="flex justify-end">
                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-emerald-600 hover:bg-emerald-700">
+                        <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={openNew}>
                             <Plus className="mr-2 h-4 w-4" /> Add Product
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>New Product</DialogTitle>
+                            <DialogTitle>{editingProduct ? "Edit Product" : "New Product"}</DialogTitle>
                         </DialogHeader>
-                        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                        <form onSubmit={handleSubmit} className="grid gap-4 py-4" key={editingProduct?.id || 'new'}>
+                            <input type="hidden" name="id" value={editingProduct?.id || ""} />
+                            <input type="hidden" name="current_image_url" value={editingProduct?.image_url || ""} />
                             <div className="grid gap-2">
                                 <Label htmlFor="name">Name</Label>
-                                <Input id="name" name="name" placeholder="Classic Burger" required />
+                                <Input id="name" name="name" placeholder="Classic Burger" required defaultValue={editingProduct?.name} />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="price">Price ($)</Label>
-                                    <Input id="price" name="price" type="number" step="0.01" placeholder="10.00" required />
+                                    <Input id="price" name="price" type="number" step="0.01" placeholder="10.00" required defaultValue={editingProduct?.price} />
                                 </div>
                                 <div className="grid gap-2">
                                     <Label htmlFor="stock">Stock</Label>
-                                    <Input id="stock" name="stock" type="number" placeholder="100" />
+                                    <Input id="stock" name="stock" type="number" placeholder="100" defaultValue={editingProduct?.stock} />
                                 </div>
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="category">Category</Label>
-                                <Select name="category_id">
+                                <Select name="category_id" defaultValue={editingProduct?.category_id || "none"}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select category" />
                                     </SelectTrigger>
@@ -177,7 +192,7 @@ export function ProductsClient({ initialProducts, categories }: { initialProduct
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleEdit(p)}>
                                                     <Pencil className="mr-2 h-4 w-4" /> Edit
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />

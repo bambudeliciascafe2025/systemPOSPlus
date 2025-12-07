@@ -29,7 +29,10 @@ export async function getStaffUsers() {
     return data
 }
 
+import { requireRole } from "@/lib/auth-checks"
+
 export async function createStaffUser(formData: FormData) {
+    await requireRole(["admin", "manager"])
     const email = formData.get("email") as string
     const password = formData.get("password") as string
     const fullName = formData.get("fullName") as string

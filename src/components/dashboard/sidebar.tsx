@@ -32,8 +32,19 @@ const sidebarItems = [
 
 import { logout } from "@/app/actions/auth"
 
-export function Sidebar() {
+export function Sidebar({ role = "cashier" }: { role?: string }) {
     const pathname = usePathname()
+
+    const filteredItems = sidebarItems.filter(item => {
+        // Cashiers only see: Dashboard, POS, Orders, Reservation, Customers
+        // Exclude: Products, Categories, Stock, Staff, Settings
+        if (role === "cashier") {
+            const allowed = ["/dashboard", "/dashboard/pos", "/dashboard/orders", "/dashboard/reservation", "/dashboard/customers"]
+            return allowed.includes(item.href)
+        }
+        // Managers/Admins see everything
+        return true
+    })
 
     return (
         <div className="flex h-full max-h-screen flex-col gap-2 border-r bg-background w-[240px]">
@@ -48,7 +59,7 @@ export function Sidebar() {
 
             <div className="flex-1 overflow-auto py-4 px-3">
                 <nav className="grid items-start gap-2 px-2 text-sm font-medium">
-                    {sidebarItems.map((item, index) => (
+                    {filteredItems.map((item, index) => (
                         <Link
                             key={index}
                             href={item.href}
@@ -65,6 +76,9 @@ export function Sidebar() {
             </div>
 
             <div className="mt-auto p-4 border-t">
+                <div className="mb-2 px-2 text-xs text-muted-foreground uppercase font-bold tracking-wider">
+                    Role: {role}
+                </div>
                 <Button
                     variant="ghost"
                     className="w-full justify-start gap-3 text-muted-foreground hover:text-red-500 hover:bg-red-50"

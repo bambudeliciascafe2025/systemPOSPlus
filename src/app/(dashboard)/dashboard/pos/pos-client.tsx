@@ -154,6 +154,13 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
                                             <span className="text-white font-bold bg-red-500 px-2 py-1 rounded text-xs">OUT OF STOCK</span>
                                         </div>
                                     )}
+                                    {product.stock > 0 && product.stock <= 10 && (
+                                        <div className="absolute top-2 right-2">
+                                            <Badge variant="destructive" className="shadow-sm opacity-90 text-[10px] h-5 px-1.5">
+                                                Low: {product.stock}
+                                            </Badge>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="p-3 flex flex-col flex-1">
                                     <h3 className="font-semibold text-sm line-clamp-2 leading-tight mb-1">{product.name}</h3>
