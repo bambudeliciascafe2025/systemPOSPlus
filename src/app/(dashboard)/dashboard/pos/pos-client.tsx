@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Search, ShoppingCart, Plus, Minus, CreditCard, Banknote, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -20,10 +20,13 @@ import { getCustomerByCedula } from "@/app/actions/customers"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { useOffline } from "@/providers/offline-context"
+import { useCart } from "@/providers/cart-context"
+import { CheckoutSuccess } from "@/components/pos/checkout-success"
 
 export function POSInterface({ initialProducts, categories }: { initialProducts: any[], categories: any[] }) {
     const { toast } = useToast()
-    const [cart, setCart] = useState<any[]>([])
+    const { cart, addToCart, updateQuantity, clearCart, cartTotal } = useCart()
+
     const [searchTerm, setSearchTerm] = useState("")
     const [activeCategory, setActiveCategory] = useState<string>("all")
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
@@ -63,42 +66,26 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
         })
     }, [initialProducts, searchTerm, activeCategory])
 
-    // Cart Calculations
-    const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+    // Load Settings (Tax)
+    const [taxRate, setTaxRate] = useState(0)
 
-    // Handlers
-    const addToCart = (product: any) => {
-        if (product.stock <= 0) {
-            toast({ title: "Out of Stock", description: "Cannot sell items with 0 stock.", variant: "destructive" })
-            return
+    useEffect(() => {
+        const stored = localStorage.getItem("pos_settings")
+        if (stored) {
+            try {
+                const settings = JSON.parse(stored)
+                setTaxRate(Number(settings.taxRate) || 0)
+            } catch (e) { console.error(e) }
         }
+    }, [])
 
-        setCart(prev => {
-            const existing = prev.find(item => item.id === product.id)
-            if (existing) {
-                if (existing.quantity >= product.stock) {
-                    toast({ title: "Stock Limit Reached", description: `Only ${product.stock} available.`, variant: "destructive" })
-                    return prev
-                }
-                return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item)
-            }
-            return [...prev, { ...product, quantity: 1 }]
-        })
-    }
-
-    const updateQuantity = (id: string, delta: number) => {
-        setCart(prev => {
-            const existing = prev.find(item => item.id === id)
-            if (!existing) return prev
-
-            const newQty = existing.quantity + delta
-            if (newQty <= 0) return prev.filter(item => item.id !== id)
-
-            return prev.map(item => item.id === id ? { ...item, quantity: newQty } : item)
-        })
-    }
+    const taxAmount = cartTotal * (taxRate / 100)
+    const finalTotal = cartTotal + taxAmount
 
     const { isOnline, addOrderToQueue } = useOffline()
+
+    const [showSuccess, setShowSuccess] = useState(false)
+    const [lastOrder, setLastOrder] = useState<{ id: string, total: number } | null>(null)
 
     const handleCheckout = async () => {
         setIsProcessing(true)
@@ -106,11 +93,11 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
         if (!isOnline) {
             addOrderToQueue({
                 items: cart,
-                totalAmount: cartTotal,
+                totalAmount: finalTotal,
                 paymentMethod,
                 customerId: customer?.id
             })
-            setCart([])
+            clearCart() // Use global clearCart
             setIsCheckoutOpen(false)
             setCedula("")
             setCustomer(null)
@@ -120,22 +107,32 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
 
         const result = await createOrder({
             items: cart,
-            total: cartTotal,
+            total: finalTotal,
             paymentMethod,
             customerId: customer?.id
         })
+
+        // ... rest of checking logic
 
         setIsProcessing(false)
         if (result.error) {
             toast({ title: "Checkout Failed", description: result.error, variant: "destructive" })
         } else {
-            toast({ title: "Order Completed", description: `Order #${result.orderId?.slice(0, 8)} processed.` })
-            setCart([])
+            // SUCCESS FLOW
+            setLastOrder({ id: result.orderId || "", total: cartTotal })
             setIsCheckoutOpen(false)
-            // Reset customer and cedula after successful checkout
+            clearCart()
             setCedula("")
             setCustomer(null)
+            setShowSuccess(true) // Trigger Success Modal
         }
+    }
+
+    // Helper for Stock Color (Traffic Light Logic)
+    const getStockColor = (stock: number) => {
+        if (stock <= 10) return "destructive" // Red
+        if (stock <= 40) return "warning" // Yellow/Orange
+        return "secondary" // Greenish/Default
     }
 
     return (
@@ -197,10 +194,17 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
                                             <span className="text-white font-bold bg-red-500 px-2 py-1 rounded text-xs">OUT OF STOCK</span>
                                         </div>
                                     )}
-                                    {product.stock > 0 && product.stock <= 10 && (
+                                    {product.stock > 0 && (
                                         <div className="absolute top-2 right-2">
-                                            <Badge variant="destructive" className="shadow-sm opacity-90 text-[10px] h-5 px-1.5">
-                                                Low: {product.stock}
+                                            <Badge
+                                                className={cn(
+                                                    "shadow-sm opacity-90 text-[10px] h-5 px-1.5",
+                                                    product.stock <= 10 ? "bg-red-500 hover:bg-red-600" :
+                                                        product.stock <= 40 ? "bg-orange-500 hover:bg-orange-600" :
+                                                            "bg-emerald-500 hover:bg-emerald-600"
+                                                )}
+                                            >
+                                                {product.stock}
                                             </Badge>
                                         </div>
                                     )}
@@ -225,7 +229,7 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
                         <ShoppingCart className="h-5 w-5" />
                         Current Order
                     </h2>
-                    <Button variant="ghost" size="sm" onClick={() => setCart([])} disabled={cart.length === 0} className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                    <Button variant="ghost" size="sm" onClick={() => clearCart()} disabled={cart.length === 0} className="text-red-500 hover:text-red-600 hover:bg-red-50">
                         Clear
                     </Button>
                 </div>
@@ -272,13 +276,13 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
                             <span>${cartTotal.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                            <span>Tax (0%)</span>
-                            <span>$0.00</span>
+                            <span>Tax ({taxRate}%)</span>
+                            <span>${taxAmount.toFixed(2)}</span>
                         </div>
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                             <span>Total</span>
-                            <span>${cartTotal.toFixed(2)}</span>
+                            <span>${finalTotal.toFixed(2)}</span>
                         </div>
                     </div>
 
@@ -287,7 +291,7 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
                         disabled={cart.length === 0}
                         onClick={() => setIsCheckoutOpen(true)}
                     >
-                        Checkout (${cartTotal.toFixed(2)})
+                        Checkout (${finalTotal.toFixed(2)})
                     </Button>
                 </div>
             </div>
@@ -326,7 +330,7 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
                         <div className="flex justify-center p-4 bg-muted/30 rounded-lg">
                             <div className="text-center">
                                 <p className="text-sm text-muted-foreground">Total Amount</p>
-                                <p className="text-4xl font-bold text-emerald-600">${cartTotal.toFixed(2)}</p>
+                                <p className="text-4xl font-bold text-emerald-600">${finalTotal.toFixed(2)}</p>
                             </div>
                         </div>
 
@@ -360,6 +364,13 @@ export function POSInterface({ initialProducts, categories }: { initialProducts:
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            {/* Success Modal */}
+            <CheckoutSuccess
+                open={showSuccess}
+                onOpenChange={setShowSuccess}
+                orderId={lastOrder?.id}
+                total={lastOrder?.total}
+            />
         </div>
     )
 }

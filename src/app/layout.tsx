@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { OfflineProvider } from "@/providers/offline-context";
+import { CartProvider } from "@/providers/cart-context";
 import { Toaster } from "@/components/ui/toaster";
 import { ConnectionIndicator } from "@/components/dashboard/connection-indicator";
 
@@ -26,14 +27,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <OfflineProvider>
-          {children}
-          <ConnectionIndicator />
-          <Toaster />
+          <CartProvider>
+            {children}
+            <ConnectionIndicator />
+            <Toaster />
+          </CartProvider>
         </OfflineProvider>
       </body>
     </html>

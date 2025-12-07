@@ -9,7 +9,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { DollarSign, ShoppingCart, RefreshCcw, CalendarCheck } from "lucide-react"
+import { DollarSign, ShoppingCart, RefreshCcw, CalendarCheck, AlertTriangle } from "lucide-react"
 import { OverviewChart } from "@/components/dashboard/overview-chart"
 
 export default async function DashboardPage() {
@@ -57,7 +57,7 @@ export default async function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                {/* Sales Return (Static for now) */}
+                {/* Sales Return (Dynamically Linked) */}
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Sales Return</CardTitle>
@@ -66,22 +66,24 @@ export default async function DashboardPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">0</div>
-                        <p className="text-xs text-muted-foreground">0% from last month</p>
+                        <div className="text-2xl font-bold">{stats?.cancelledCount || 0}</div>
+                        <p className="text-xs text-muted-foreground">Orders Cancelled / Returned</p>
                     </CardContent>
                 </Card>
 
-                {/* Reservations (Static for now) */}
-                <Card>
+                {/* Low Stock Alerts (Replaces Reservations) */}
+                <Card className={stats?.lowStockCount && stats.lowStockCount > 0 ? "border-orange-500/50 bg-orange-50/10" : ""}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Reservations</CardTitle>
-                        <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
-                            <CalendarCheck className="h-4 w-4" />
+                        <CardTitle className="text-sm font-medium">Low Stock Alerts</CardTitle>
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center ${stats?.lowStockCount && stats.lowStockCount > 0 ? "bg-orange-100 text-orange-600" : "bg-emerald-100 text-emerald-600"}`}>
+                            {stats?.lowStockCount && stats.lowStockCount > 0 ? <AlertTriangle className="h-4 w-4" /> : <CalendarCheck className="h-4 w-4" />}
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">0</div>
-                        <p className="text-xs text-muted-foreground">+0 since last hour</p>
+                        <div className={`text-2xl font-bold ${stats?.lowStockCount && stats.lowStockCount > 0 ? "text-orange-600" : ""}`}>
+                            {stats?.lowStockCount || 0}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Products with stock ≤ 40</p>
                     </CardContent>
                 </Card>
             </div>
@@ -132,34 +134,44 @@ export default async function DashboardPage() {
                     <CardTitle>Recent Orders</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Order ID</TableHead>
-                                <TableHead>Customer</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Amount</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {recentOrders.length === 0 ? (
+                    <div className="max-h-[400px] overflow-y-auto relative">
+                        <Table>
+                            <TableHeader className="sticky top-0 bg-background z-10 shadow-sm">
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center h-24">No orders yet.</TableCell>
+                                    <TableHead>Order ID</TableHead>
+                                    <TableHead>Customer</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead className="text-right">Amount</TableHead>
                                 </TableRow>
-                            ) : (
-                                recentOrders.map((order: any) => (
-                                    <TableRow key={order.id}>
-                                        <TableCell className="font-medium">#{order.id.slice(0, 7)}</TableCell>
-                                        <TableCell>{order.customers?.full_name || "Walk-in"}</TableCell>
-                                        <TableCell>{order.payment_method}</TableCell>
-                                        <TableCell><Badge className="bg-emerald-500">{order.status}</Badge></TableCell>
-                                        <TableCell className="text-right">${Number(order.total_amount).toFixed(2)}</TableCell>
+                            </TableHeader>
+                            <TableBody>
+                                {recentOrders.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center h-24">No orders yet.</TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                                ) : (
+                                    recentOrders.map((order: any) => (
+                                        <TableRow key={order.id}>
+                                            <TableCell className="font-medium">#{order.id.slice(0, 7)}</TableCell>
+                                            <TableCell>{order.customers?.full_name || "Walk-in"}</TableCell>
+                                            <TableCell>{order.payment_method}</TableCell>
+                                            <TableCell>
+                                                <Badge className={
+                                                    order.status === "CANCELLED" ? "bg-red-500 hover:bg-red-600" :
+                                                        order.status === "PENDING" ? "bg-yellow-500 hover:bg-yellow-600" :
+                                                            "bg-emerald-500 hover:bg-emerald-600"
+                                                }>
+                                                    {order.status}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">${Number(order.total_amount).toFixed(2)}</TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </div>

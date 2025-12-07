@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, Bell, Moon, Sun } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { DateTimeDisplay } from "@/components/dashboard/date-time-display"
+import { GlobalSearch } from "@/components/dashboard/global-search"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -17,17 +19,11 @@ export function Header() {
     return (
         <header className="flex h-16 items-center gap-4 border-b bg-background px-6">
             <div className="w-full flex-1">
-                <form className="relative w-full max-w-sm">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        type="search"
-                        placeholder="Search products..."
-                        className="w-full bg-background pl-8 md:w-[300px] lg:w-[400px]"
-                    />
-                </form>
+                <GlobalSearch />
             </div>
 
             <div className="flex items-center gap-4">
+                <DateTimeDisplay />
                 <Button variant="ghost" size="icon" className="text-muted-foreground">
                     <Bell className="h-5 w-5" />
                     <span className="sr-only">Notifications</span>

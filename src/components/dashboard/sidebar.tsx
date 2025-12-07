@@ -11,6 +11,7 @@ import {
     Users,
     Settings,
     LifeBuoy,
+    BarChart3,
     LogOut
 } from "lucide-react"
 
@@ -24,9 +25,10 @@ const sidebarItems = [
     { icon: Package, label: "Categories", href: "/dashboard/categories" },
     { icon: ClipboardList, label: "Stock", href: "/dashboard/stock" }, // Restored
     { icon: ClipboardList, label: "Orders", href: "/dashboard/orders" },
-    { icon: CalendarDays, label: "Reservation", href: "/dashboard/reservation" },
+    // { icon: CalendarDays, label: "Reservation", href: "/dashboard/reservation" }, // Hidden as per user request
     { icon: Users, label: "Staff", href: "/dashboard/staff" },
     { icon: Users, label: "Customers", href: "/dashboard/customers" }, // Added Customers
+    { icon: BarChart3, label: "Reports", href: "/dashboard/reports" }, // New Reports
     { icon: Settings, label: "System Settings", href: "/dashboard/settings" },
 ]
 
@@ -39,7 +41,7 @@ export function Sidebar({ role = "cashier" }: { role?: string }) {
         // Cashiers only see: Dashboard, POS, Orders, Reservation, Customers
         // Exclude: Products, Categories, Stock, Staff, Settings
         if (role === "cashier") {
-            const allowed = ["/dashboard", "/dashboard/pos", "/dashboard/orders", "/dashboard/reservation", "/dashboard/customers"]
+            const allowed = ["/dashboard", "/dashboard/pos", "/dashboard/orders", "/dashboard/reservation", "/dashboard/customers", "/dashboard/settings", "/dashboard/reports"]
             return allowed.includes(item.href)
         }
         // Managers/Admins see everything

@@ -25,7 +25,7 @@ export async function getDashboardStats() {
             .from("orders")
             .select("*, customers(full_name)")
             .order("created_at", { ascending: false })
-            .limit(5)
+            .limit(50) // Increased to 50 to allow scrollable list on dashboard
 
         if (recentError) throw recentError
 
@@ -90,12 +90,26 @@ export async function getDashboardStats() {
                 .slice(0, 5)
         }
 
+        // 5. Sales Returns (Cancelled Orders)
+        const { count: cancelledCount, error: cancelledError } = await supabase
+            .from("orders")
+            .select("*", { count: 'exact', head: true })
+            .eq("status", "CANCELLED")
+
+        // 6. Low Stock Alerts (Stock <= 40 as per user request)
+        const { count: lowStockCount, error: lowStockError } = await supabase
+            .from("products")
+            .select("*", { count: 'exact', head: true })
+            .lte("stock", 40)
+
         return {
             totalSales,
             totalOrders,
             recentOrders: safeRecentOrders,
             chartData,
-            topSelling
+            topSelling,
+            cancelledCount: cancelledCount || 0,
+            lowStockCount: lowStockCount || 0
         }
 
     } catch (e: any) {

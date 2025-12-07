@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Plus, Search, MoreHorizontal, Pencil, Trash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -42,6 +43,7 @@ import { Label } from "@/components/ui/label"
 import { createCustomer, deleteCustomer, getCustomerDetails } from "@/app/actions/customers"
 
 export function CustomersClient({ initialCustomers }: { initialCustomers: any[] }) {
+    const router = useRouter()
     const [isOpen, setIsOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState("")
@@ -82,6 +84,7 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: any[] 
             alert("Error: " + result.error)
         } else {
             setIsOpen(false)
+            router.refresh() // Force data refresh from server
         }
     }
 

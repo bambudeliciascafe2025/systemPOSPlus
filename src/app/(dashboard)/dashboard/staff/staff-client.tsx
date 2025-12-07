@@ -26,9 +26,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createStaffUser } from "@/app/actions/staff"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import { getStaffPerformance } from "@/app/actions/staff"
+
 export function StaffClient({ initialStaff }: { initialStaff: any[] }) {
     const [isOpen, setIsOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+
+    // Performance Sheet State
+    const [detailsOpen, setDetailsOpen] = useState(false)
+    const [selectedStaff, setSelectedStaff] = useState<any>(null)
+    const [staffStats, setStaffStats] = useState<any>(null)
+    const [loadingStats, setLoadingStats] = useState(false)
+
+    async function handleRowClick(staff: any) {
+        setSelectedStaff(staff)
+        setDetailsOpen(true)
+        setLoadingStats(true)
+
+        const { stats, history, error } = await getStaffPerformance(staff.id)
+
+        if (!error) {
+            setStaffStats({ stats, history })
+        }
+        setLoadingStats(false)
+    }
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault()
@@ -119,7 +143,11 @@ export function StaffClient({ initialStaff }: { initialStaff: any[] }) {
                                 </TableRow>
                             ) : (
                                 initialStaff.map((staff) => (
-                                    <TableRow key={staff.id}>
+                                    <TableRow
+                                        key={staff.id}
+                                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                                        onClick={() => handleRowClick(staff)}
+                                    >
                                         <TableCell className="font-medium flex items-center gap-2">
                                             <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
                                                 {staff.full_name ? staff.full_name.substring(0, 2).toUpperCase() : '??'}
@@ -155,6 +183,104 @@ export function StaffClient({ initialStaff }: { initialStaff: any[] }) {
                     </Table>
                 </CardContent>
             </Card>
+
+            <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
+                <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+                    <SheetHeader className="mb-6">
+                        <SheetTitle className="text-2xl font-bold">
+                            {selectedStaff?.full_name}
+                        </SheetTitle>
+                        <SheetDescription>
+                            Performance & Sales History
+                        </SheetDescription>
+                    </SheetHeader>
+
+                    {loadingStats ? (
+                        <div className="flex items-center justify-center h-48">
+                            <p className="text-muted-foreground animate-pulse">Calculating bonuses...</p>
+                        </div>
+                    ) : staffStats ? (
+                        <div className="space-y-6">
+                            {/* Key Metrics */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-100">
+                                    <p className="text-xs text-muted-foreground uppercase font-bold">Total Sales</p>
+                                    <p className="text-2xl font-bold text-emerald-700">
+                                        ${staffStats.stats?.totalSales.toFixed(2)}
+                                    </p>
+                                </div>
+                                <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                    <p className="text-xs text-muted-foreground uppercase font-bold">Tickets (Orders)</p>
+                                    <p className="text-2xl font-bold text-blue-700">
+                                        {staffStats.stats?.orderCount}
+                                    </p>
+                                </div>
+                                <div className="p-4 bg-purple-50 rounded-lg border border-purple-100 col-span-2">
+                                    <p className="text-xs text-muted-foreground uppercase font-bold">Avg. Ticket Value</p>
+                                    <p className="text-2xl font-bold text-purple-700">
+                                        ${staffStats.stats?.averageTicket.toFixed(2)}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Top Products */}
+                            <div>
+                                <h3 className="text-lg font-semibold mb-3">Top Selling Products</h3>
+                                <div className="space-y-2">
+                                    {staffStats.stats?.topProducts?.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">No sales data recorded yet.</p>
+                                    ) : (
+                                        staffStats.stats?.topProducts?.map((p: any, i: number) => (
+                                            <div key={i} className="flex justify-between items-center p-2 rounded bg-muted/30">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline" className="w-6 h-6 flex items-center justify-center p-0 rounded-full">{i + 1}</Badge>
+                                                    <span className="font-medium text-sm">{p.name}</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-xs text-muted-foreground block">{p.count} units</span>
+                                                    <span className="font-bold text-sm text-emerald-600">${p.sales.toFixed(2)}</span>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Recent Sales History */}
+                            <div>
+                                <h3 className="text-lg font-semibold mb-3">Recent Transactions</h3>
+                                <ScrollArea className="h-[250px] rounded-md border p-2">
+                                    <div className="space-y-2">
+                                        {staffStats.history?.length === 0 ? (
+                                            <p className="text-sm text-center py-4 text-muted-foreground">No recent transactions.</p>
+                                        ) : (
+                                            staffStats.history?.map((order: any) => (
+                                                <div key={order.id} className="flex items-center justify-between p-2 border-b last:border-0 hover:bg-muted/50">
+                                                    <div>
+                                                        <p className="text-sm font-bold">Order #{order.id.slice(0, 8)}</p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {new Date(order.created_at).toLocaleDateString()} • {new Date(order.created_at).toLocaleTimeString()}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="font-bold text-emerald-600">${order.total_amount.toFixed(2)}</p>
+                                                        <Badge variant="outline" className="text-[10px] h-5">{order.payment_method}</Badge>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+
+                        </div>
+                    ) : null}
+                </SheetContent>
+            </Sheet>
         </div>
     )
 }

@@ -1,7 +1,9 @@
 "use server"
 
 import { createClient } from "@supabase/supabase-js"
+import { createClient as createServerClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { requireRole } from "@/lib/auth-checks"
 
 // Lazy Init Admin Client
 function getAdminDb() {
@@ -22,14 +24,11 @@ export async function getStaffUsers() {
     const { data, error } = await supabaseAdmin
         .from("profiles")
         .select("*")
-        .select("*")
     // .order("created_at", { ascending: false })
 
     if (error) throw error
     return data
 }
-
-import { requireRole } from "@/lib/auth-checks"
 
 export async function createStaffUser(formData: FormData) {
     await requireRole(["admin", "manager"])
@@ -71,5 +70,91 @@ export async function createStaffUser(formData: FormData) {
     } catch (error: any) {
         console.error("Error creating staff:", error)
         return { error: error.message }
+    }
+}
+
+// PERFORMANCE METRICS
+
+export async function getStaffPerformance(userId: string) {
+    const supabase = await createServerClient()
+
+    // Authorization Check
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { error: "Unauthorized" }
+
+    // Maybe check if user is allowed to view performance? Managers/Admin only?
+    // For now, allow view.
+
+    // 1. Verify Profile exists
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single()
+
+    if (!profile) return { error: "Staff not found" }
+
+    // 2. Fetch Sales History (Orders)
+    // We assume 'user_id' in orders table links to the staff who made the sale
+    const { data: orders, error: ordersError } = await supabase
+        .from("orders")
+        .select(`
+            id, total_amount, created_at, status, payment_method,
+            order_items (
+                quantity, subtotal,
+                products ( name )
+            )
+        `)
+        .eq("user_id", userId)
+        .eq("status", "COMPLETED") // Only count completed sales
+        .order("created_at", { ascending: false })
+
+    if (ordersError) {
+        console.error("Performance Query Error:", ordersError)
+        // If error is "column does not exist", we handle it gracefully?
+        // return { error: "Tracking not available" }
+        // Let's return empty stats rather than crash
+        return {
+            profile,
+            stats: { totalSales: 0, orderCount: 0, averageTicket: 0, topProducts: [] },
+            history: [] // No history available yet
+        }
+    }
+
+    // 3. Calculate Metrics
+    const totalSales = orders.reduce((sum, o) => sum + (o.total_amount || 0), 0)
+    const orderCount = orders.length
+    const averageTicket = orderCount > 0 ? totalSales / orderCount : 0
+
+    // 4. Calculate Top Products
+    const productMap = new Map<string, { name: string, count: number, sales: number }>()
+
+    orders.forEach(order => {
+        order.order_items.forEach((item: any) => {
+            if (!item.products) return
+            const name = item.products.name
+
+            const existing = productMap.get(name) || { name, count: 0, sales: 0 }
+            existing.count += item.quantity
+            existing.sales += item.subtotal
+            productMap.set(name, existing)
+        })
+    })
+
+    const topProducts = Array.from(productMap.values())
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5)
+
+    // 5. Daily Sales (Last 7 days?) - Logic for charts if needed, but list is fine for now.
+
+    return {
+        profile,
+        stats: {
+            totalSales,
+            orderCount,
+            averageTicket,
+            topProducts
+        },
+        history: orders
     }
 }

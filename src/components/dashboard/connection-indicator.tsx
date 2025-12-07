@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 export function ConnectionIndicator() {
     const { isOnline, queue } = useOffline()
 
-    if (isOnline && queue.length === 0) return null
+    // if (isOnline && queue.length === 0) return null // Removed to make it always visible as per user request
 
     return (
         <div className={cn(

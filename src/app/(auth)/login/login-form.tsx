@@ -148,29 +148,7 @@ export function LoginForm() {
                 </form>
             </Form>
 
-            <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                        Or, login with
-                    </span>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" type="button" disabled={isLoading} className="h-11">
-                    {/* Google Icon Proxy */}
-                    <span className="mr-2 font-bold text-lg">G</span>
-                    Google
-                </Button>
-                <Button variant="outline" type="button" disabled={isLoading} className="h-11">
-                    {/* Facebook Icon Proxy */}
-                    <span className="mr-2 font-bold text-lg text-blue-600">f</span>
-                    Facebook
-                </Button>
-            </div>
+            {/* Social login removed per user request */}
 
             <div className="mt-4 text-center text-sm">
                 Don&apos;t have an account?{" "}

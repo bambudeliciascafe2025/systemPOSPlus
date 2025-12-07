@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { revalidatePath } from "next/cache"
 
 export async function getCustomerByCedula(cedula: string) {
     const supabase = await createClient()
@@ -27,10 +28,26 @@ export async function getCustomers() {
 
     const { data } = await supabase
         .from("customers")
-        .select("*")
+        .select("*, orders(total_amount, status)")
         .order("created_at", { ascending: false })
 
-    return data || []
+    if (!data) return []
+
+    // Calculate total spent for each customer
+    const customersWithStats = data.map((customer: any) => {
+        const totalSpent = customer.orders
+            ?.filter((o: any) => o.status === 'COMPLETED')
+            .reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0) || 0
+
+        // Clean up orders array from result to avoid payload bloat if not needed
+        const { orders, ...customerClean } = customer
+        return {
+            ...customerClean,
+            total_spent: totalSpent
+        }
+    })
+
+    return customersWithStats
 }
 
 export async function createCustomer(formData: FormData) {
@@ -87,6 +104,7 @@ export async function createCustomer(formData: FormData) {
         return { error: error.message }
     }
 
+    revalidatePath("/dashboard/customers")
     return { success: true, customer: data }
 }
 

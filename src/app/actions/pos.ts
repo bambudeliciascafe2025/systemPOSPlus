@@ -1,11 +1,12 @@
 "use server"
 
-import { createClient } from "@supabase/supabase-js" // Direct Admin Import
+import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
 // Lazy Init Admin Client
 function getAdminDb() {
-    return createClient(
+    return createAdminClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
@@ -17,12 +18,9 @@ export async function createOrder(data: {
     paymentMethod: string,
     customerId?: string
 }) {
-    // const supabase = await createClient() // standard client removed
-    const { items, total, paymentMethod, customerId } = data
-
-    if (!items || items.length === 0) {
-        return { error: "Cart is empty" }
-    }
+    // 0. Get Current User (Cashier)
+    const supabase = await createClient() // Standard client for auth
+    const { data: { user } } = await supabase.auth.getUser()
 
     try {
         const adminDb = getAdminDb()
@@ -34,7 +32,8 @@ export async function createOrder(data: {
                 total_amount: total,
                 payment_method: paymentMethod,
                 status: "COMPLETED",
-                customer_id: customerId || null
+                customer_id: customerId || null,
+                user_id: user?.id || null // Track the cashier
             })
             .select()
             .single()
