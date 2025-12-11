@@ -29,14 +29,16 @@ export async function searchGlobal(query: string): Promise<SearchResult[]> {
     // Also add 'h' if not present? agua -> hagua 
     variations.add('h' + cleanTerm)
 
-    // 2. B/V Swapping & S/C/Z Swapping (Consonant replacement)
+    // 3. B/V Swapping & S/C/Z Swapping (Consonant replacement)
     // approach: Create a "wildcard" version where uncertain chars are replaced by '_' (SQL single char matching)
     // sitrico -> _itrico
 
+    let wildcardStart = cleanTerm // Default to original if no ambiguity found yet, or handle properly
     const ambiguousChars = /[bvcsqz]/g
+
     if (ambiguousChars.test(cleanTerm)) {
         // Replace FIRST ambiguous char with wildcard (most common error)
-        const wildcardStart = cleanTerm.replace(/^[bvcsqz]/, '_')
+        wildcardStart = cleanTerm.replace(/^[bvcsqz]/, '_')
         variations.add(wildcardStart)
 
         // Also simple swaps for explicit strings
