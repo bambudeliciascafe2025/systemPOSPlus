@@ -179,7 +179,8 @@ export async function updateProduct(formData: FormData) {
     if (!id || !name || isNaN(price)) return { error: "ID, Name and Price are required" }
 
     // Priority: 1. New client-uploaded URL, 2. Existing URL, 3. Null
-    let image_url = formData.get("image_url") as string
+    let image_url: string | null = formData.get("image_url") as string || null
+
     if (!image_url) {
         image_url = formData.get("current_image_url") as string || null
     }
