@@ -150,12 +150,7 @@ export function LoginForm() {
 
             {/* Social login removed per user request */}
 
-            <div className="mt-4 text-center text-sm">
-                Don&apos;t have an account?{" "}
-                <a href="/register" className="underline hover:text-emerald-500">
-                    Register
-                </a>
-            </div>
+
         </div>
     )
 }

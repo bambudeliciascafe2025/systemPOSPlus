@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button"
 import { logout } from "@/app/actions/auth"
 import { useLanguage } from "@/providers/language-provider"
 
-export function Sidebar({ role = "cashier" }: { role?: string }) {
+export function Sidebar({ role = "cashier", className, onNavigate }: { role?: string, className?: string, onNavigate?: () => void }) {
     const pathname = usePathname()
     const { t } = useLanguage()
 
@@ -41,24 +41,29 @@ export function Sidebar({ role = "cashier" }: { role?: string }) {
     ]
 
     const filteredItems = sidebarItems.filter(item => {
-        // Cashiers only see: Dashboard, POS, Orders, Reservation, Customers
-        // Exclude: Products, Categories, Stock, Staff, Settings
+        // Explicitly hide settings for non-admins
+        if (item.href === "/dashboard/settings" && role !== "admin") {
+            return false
+        }
+
+        // Cashiers only see specific items
         if (role === "cashier") {
-            const allowed = ["/dashboard", "/dashboard/pos", "/dashboard/orders", "/dashboard/reservation", "/dashboard/customers", "/dashboard/settings", "/dashboard/reports"]
+            const allowed = ["/dashboard", "/dashboard/pos", "/dashboard/orders", "/dashboard/reservation", "/dashboard/customers", "/dashboard/reports"]
             return allowed.includes(item.href)
         }
-        // Managers/Admins see everything
+
+        // Managers/Admins see everything else by default
         return true
     })
 
     return (
-        <div className="flex h-full max-h-screen flex-col gap-2 border-r bg-background w-[240px]">
+        <div className={cn("flex h-full max-h-screen flex-col gap-2 border-r bg-background", className)}>
             <div className="flex h-16 items-center border-b px-6">
                 <Link href="/dashboard" className="flex items-center gap-2 font-bold">
                     <div className="bg-emerald-600 text-white rounded-full p-1">
                         <ShoppingBasket className="h-5 w-5" />
                     </div>
-                    <span className="text-xl tracking-tight">HotPOS</span>
+                    <span className="text-xl tracking-tight">SystemPOS+</span>
                 </Link>
             </div>
 
@@ -68,6 +73,7 @@ export function Sidebar({ role = "cashier" }: { role?: string }) {
                         <Link
                             key={index}
                             href={item.href}
+                            onClick={onNavigate}
                             className={cn(
                                 "group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all hover:bg-emerald-50 text-muted-foreground hover:text-emerald-600",
                                 pathname === item.href && "bg-emerald-50 text-emerald-600 font-semibold"
