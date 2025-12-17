@@ -15,11 +15,32 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useState } from "react"
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { getStoreSettings } from "@/app/actions/settings"
 
 export function Header({ role }: { role?: string }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+    const [logoUrl, setLogoUrl] = useState<string | null>(null)
+    const router = useRouter()
+
+    useEffect(() => {
+        async function loadLogo() {
+            const { settings } = await getStoreSettings()
+            if (settings?.logo_url) {
+                setLogoUrl(settings.logo_url)
+            }
+        }
+        loadLogo()
+    }, [])
+
+    async function handleLogout() {
+        const supabase = createClient()
+        await supabase.auth.signOut()
+        router.push("/login")
+        router.refresh()
+    }
 
     return (
         <header className="flex h-16 items-center gap-4 border-b bg-background px-6">
@@ -54,10 +75,10 @@ export function Header({ role }: { role?: string }) {
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" size="icon" className="rounded-full overflow-hidden">
+                        <Button variant="secondary" size="icon" className="rounded-full overflow-hidden border border-gray-200">
                             <Avatar>
-                                <AvatarImage src="https://github.com/shadcn.png" />
-                                <AvatarFallback>AD</AvatarFallback>
+                                <AvatarImage src={logoUrl || "https://github.com/shadcn.png"} className="object-cover" />
+                                <AvatarFallback>POS</AvatarFallback>
                             </Avatar>
                             <span className="sr-only">Toggle user menu</span>
                         </Button>
@@ -65,10 +86,20 @@ export function Header({ role }: { role?: string }) {
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>My Account</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>Settings</DropdownMenuItem>
-                        <DropdownMenuItem>Support</DropdownMenuItem>
+
+                        {/* Only Admin sees Settings */}
+                        {role === 'admin' && (
+                            <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
+                                Settings
+                            </DropdownMenuItem>
+                        )}
+
+                        {/* Support removed as requested */}
+
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-500">Logout</DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-500 cursor-pointer" onSelect={handleLogout}>
+                            Logout
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
