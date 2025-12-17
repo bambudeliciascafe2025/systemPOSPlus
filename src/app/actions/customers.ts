@@ -109,6 +109,45 @@ export async function createCustomer(formData: FormData) {
     return { success: true, customer: data }
 }
 
+export async function updateCustomer(formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+        return { error: "Unauthorized" }
+    }
+
+    const id = formData.get("id") as string
+    const fullName = formData.get("fullName") as string
+    const cedula = formData.get("cedula") as string
+    const phone = formData.get("phone") as string
+    const email = formData.get("email") as string
+    const notes = formData.get("notes") as string
+
+    if (!id || !fullName) return { error: "ID and Full Name are required" }
+
+    const customerData: any = {
+        full_name: fullName,
+        cedula: cedula || null,
+        phone: phone || null,
+        email: email || null,
+        notes: notes || null
+    }
+
+    const { error } = await supabase
+        .from("customers")
+        .update(customerData)
+        .eq("id", id)
+
+    if (error) {
+        console.error("Update customer error:", error)
+        return { error: error.message }
+    }
+
+    revalidatePath("/dashboard/customers")
+    return { success: true }
+}
+
 export async function deleteCustomer(id: string) {
     const supabase = await createClient()
 
