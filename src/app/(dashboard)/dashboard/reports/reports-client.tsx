@@ -34,6 +34,7 @@ import {
     Bar
 } from "recharts"
 import { getSalesReport, ReportRange } from "@/app/actions/reports"
+import * as XLSX from "xlsx"
 
 import { useLanguage } from "@/providers/language-provider"
 
@@ -67,34 +68,32 @@ export function ReportsClient() {
         setLoading(false)
     }
 
-    function downloadCSV() {
+    function downloadExcel() {
         if (!data?.rawOrders) return
 
-        // BOM for Excel to read UTF-8 correctly
-        const BOM = "\uFEFF";
-        const headers = ["ID Orden", "Fecha", "Hora", "Cajero", "Metodo Pago", "Estado", "Total"]
-        const rows = data.rawOrders.map((o: any) => [
-            o.id,
-            format(new Date(o.created_at), "yyyy-MM-dd"),
-            format(new Date(o.created_at), "HH:mm:ss"),
-            `"${o.profiles?.full_name || "Desconocido"}"`,
-            o.payment_method,
-            o.status === "COMPLETED" ? "Completo" : "Cancelado",
-            o.total_amount.toFixed(2)
-        ])
+        // Map data to clean object structure for Excel
+        const excelData = data.rawOrders.map((o: any) => ({
+            "ID Orden": o.id,
+            "Fecha": format(new Date(o.created_at), "yyyy-MM-dd"),
+            "Hora": format(new Date(o.created_at), "HH:mm:ss"),
+            "Cajero": o.profiles?.full_name || "Desconocido",
+            "Método Pago": o.payment_method,
+            "Estado": o.status === "COMPLETED" ? "Completo" : "Cancelado",
+            "Total": Number(o.total_amount.toFixed(2)) // Ensure it's a number for Excel math
+        }))
 
-        const csvContent = headers.join(",") + "\n"
-            + rows.map((e: any[]) => e.join(",")).join("\n")
+        // Create Worksheet
+        const ws = XLSX.utils.json_to_sheet(excelData)
 
-        const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" })
-        const url = URL.createObjectURL(blob)
+        // Create Workbook
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, "Reporte Ventas")
 
-        const link = document.createElement("a")
-        link.href = url
-        link.setAttribute("download", `Reporte_Ventas_${range}_${format(new Date(), "yyyy-MM-dd")}.csv`)
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+        // Generate Filename
+        const fileName = `Reporte_Ventas_${range}_${format(new Date(), "yyyy-MM-dd")}.xlsx`
+
+        // Save File
+        XLSX.writeFile(wb, fileName)
     }
 
     return (
@@ -105,7 +104,7 @@ export function ReportsClient() {
                     <p className="text-muted-foreground">{t.dashboard}</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={downloadCSV} disabled={!data || loading}>
+                    <Button variant="outline" onClick={downloadExcel} disabled={!data || loading}>
                         <Download className="mr-2 h-4 w-4" />
                         {t.export_excel}
                     </Button>
