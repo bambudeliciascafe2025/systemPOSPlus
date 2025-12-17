@@ -134,37 +134,38 @@ export function CustomersClient({ initialCustomers, currentUserRole }: { initial
                 <h1 className="text-lg font-semibold md:text-2xl">Customers</h1>
                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-emerald-600 hover:bg-emerald-700">
+                        <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={openNew}>
                             <Plus className="mr-2 h-4 w-4" /> Add Customer
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Add New Customer</DialogTitle>
+                            <DialogTitle>{editingCustomer ? "Edit Customer" : "Add New Customer"}</DialogTitle>
                         </DialogHeader>
-                        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                        <form onSubmit={handleSubmit} className="grid gap-4 py-4" key={editingCustomer?.id || 'new'}>
+                            {editingCustomer && <input type="hidden" name="id" value={editingCustomer.id} />}
                             <div className="grid gap-2">
                                 <Label htmlFor="fullName">Full Name</Label>
-                                <Input id="fullName" name="fullName" placeholder="Jane Doe" required />
+                                <Input id="fullName" name="fullName" placeholder="Jane Doe" required defaultValue={editingCustomer?.full_name} />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="cedula">Cédula (ID)</Label>
-                                <Input id="cedula" name="cedula" placeholder="12.345.678" />
+                                <Input id="cedula" name="cedula" placeholder="12.345.678" defaultValue={editingCustomer?.cedula} />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="phone">Phone Number</Label>
-                                <Input id="phone" name="phone" placeholder="(555) 555-5555" />
+                                <Input id="phone" name="phone" placeholder="(555) 555-5555" defaultValue={editingCustomer?.phone} />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="email">Email</Label>
-                                <Input id="email" name="email" type="email" placeholder="jane@example.com" />
+                                <Input id="email" name="email" type="email" placeholder="jane@example.com" defaultValue={editingCustomer?.email} />
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="notes">Notes</Label>
-                                <Input id="notes" name="notes" placeholder="VIP, Allergies, etc." />
+                                <Input id="notes" name="notes" placeholder="VIP, Allergies, etc." defaultValue={editingCustomer?.notes} />
                             </div>
                             <Button type="submit" className="mt-4 bg-emerald-600" disabled={isLoading}>
-                                Save Customer
+                                {editingCustomer ? "Update Customer" : "Save Customer"}
                             </Button>
                         </form>
                     </DialogContent>
