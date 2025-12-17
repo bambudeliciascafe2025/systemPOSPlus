@@ -1,4 +1,4 @@
-"use server"
+"use client"
 
 import { useEffect, useState } from "react"
 import { Save, Building2, Receipt, Percent, Upload, Image as ImageIcon } from "lucide-react"
