@@ -110,13 +110,13 @@ export async function createProduct(formData: FormData) {
 
     if (!name || isNaN(price)) return { error: "Name and Price are required" }
 
-    let image_url = null
+    let image_url = formData.get("image_url") as string || null
 
     try {
         const adminDb = getAdminDb()
 
-        // Handle Image Upload
-        if (imageFile && imageFile.size > 0) {
+        // Handle Image Upload (Only if URL not already provided)
+        if (!image_url && imageFile && imageFile.size > 0) {
             const fileExt = imageFile.name.split('.').pop()
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 
@@ -131,9 +131,7 @@ export async function createProduct(formData: FormData) {
 
             if (uploadError) {
                 console.error("Upload Error:", uploadError)
-                // Continue creating product even if image fails, or throw? 
-                // Better to throw if image was important, but let's log and continue or warning.
-                // Actually, let's treat it as non-fatal but log it.
+                // Continue creating product even if image fails
             } else {
                 // Get Public URL
                 const { data: publicUrlData } = adminDb
@@ -180,13 +178,22 @@ export async function updateProduct(formData: FormData) {
 
     if (!id || !name || isNaN(price)) return { error: "ID, Name and Price are required" }
 
-    let image_url = formData.get("current_image_url") as string || null
+    // Priority: 1. New client-uploaded URL, 2. Existing URL, 3. Null
+    let image_url = formData.get("image_url") as string
+    if (!image_url) {
+        image_url = formData.get("current_image_url") as string || null
+    }
 
     try {
         const adminDb = getAdminDb()
 
-        // Handle Image Upload if new file
-        if (imageFile && imageFile.size > 0) {
+        // Handle Image Upload (Only if NO URL provided and File exists)
+        // Cases:
+        // 1. Client uploaded -> image_url is set. File is null/ignored.
+        // 2. Client sent file -> image_url is null. File is set. Upload here.
+        // 3. No change -> image_url is current_url. File is null.
+
+        if (!image_url && imageFile && imageFile.size > 0) {
             const fileExt = imageFile.name.split('.').pop()
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
 

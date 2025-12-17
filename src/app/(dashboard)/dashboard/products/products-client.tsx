@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { createProduct, deleteProduct, updateProduct } from "@/app/actions/inventory"
+import { createClient } from "@/lib/supabase/client"
 import { Badge } from "@/components/ui/badge"
 import {
     AlertDialog,
@@ -69,6 +70,37 @@ export function ProductsClient({ initialProducts, categories }: { initialProduct
         event.preventDefault()
         setIsLoading(true)
         const formData = new FormData(event.currentTarget)
+        const imageFile = formData.get("image") as File
+
+        // Client-Side Upload Logic
+        if (imageFile && imageFile.size > 0) {
+            try {
+                const supabase = createClient()
+                const fileExt = imageFile.name.split('.').pop()
+                const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+
+                const { data, error } = await supabase.storage
+                    .from('products')
+                    .upload(fileName, imageFile)
+
+                if (error) throw error
+
+                // Get Public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('products')
+                    .getPublicUrl(fileName)
+
+                // Add URL to formData and REMOVE the huge file to avoid 413 Error
+                formData.set("image_url", publicUrl)
+                formData.delete("image") // Critical: Don't send the file to server action
+
+            } catch (error: any) {
+                console.error("Client Upload Error:", error)
+                alert("Image upload failed: " + error.message)
+                setIsLoading(false)
+                return
+            }
+        }
 
         const result = editingProduct
             ? await updateProduct(formData)
