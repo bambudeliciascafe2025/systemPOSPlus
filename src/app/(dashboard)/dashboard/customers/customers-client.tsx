@@ -63,12 +63,23 @@ export function CustomersClient({ initialCustomers, currentUserRole }: { initial
     const [customerStats, setCustomerStats] = useState<any>(null)
     const [loadingStats, setLoadingStats] = useState(false)
     const [deleteId, setDeleteId] = useState<string | null>(null)
+    const [editingCustomer, setEditingCustomer] = useState<any>(null)
 
     // Use passed data instead of mock
     const customers = initialCustomers.filter(c =>
         c.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.cedula && c.cedula.includes(searchTerm))
     )
+
+    function handleEdit(customer: any) {
+        setEditingCustomer(customer)
+        setIsOpen(true)
+    }
+
+    function openNew() {
+        setEditingCustomer(null)
+        setIsOpen(true)
+    }
     // ...
     // ... inside return ...
     // ...
@@ -92,7 +103,9 @@ export function CustomersClient({ initialCustomers, currentUserRole }: { initial
         setIsLoading(true)
         const formData = new FormData(event.currentTarget)
 
-        const result = await createCustomer(formData)
+        const result = editingCustomer
+            ? await updateCustomer(formData)
+            : await createCustomer(formData)
 
         setIsLoading(false)
         if (result.error) {
