@@ -73,6 +73,29 @@ export async function createStaffUser(formData: FormData) {
     }
 }
 
+export async function deleteStaffUser(userId: string) {
+    await requireRole(["admin"])
+
+    try {
+        const supabaseAdmin = getAdminDb()
+
+        // 1. Delete from Auth (This cascades to profile usually if set up, 
+        // but often we need to delete profile manualy or let cascade handle it)
+        // Check cascade. Usually profile references auth.users. 
+        // Deleting auth user is the root action.
+
+        const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
+
+        if (error) throw error
+
+        revalidatePath("/dashboard/staff")
+        return { success: true }
+    } catch (e: any) {
+        console.error("Delete Staff Error:", e)
+        return { error: e.message }
+    }
+}
+
 // PERFORMANCE METRICS
 
 export async function getStaffPerformance(userId: string) {

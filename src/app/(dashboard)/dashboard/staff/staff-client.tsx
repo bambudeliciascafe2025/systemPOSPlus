@@ -23,17 +23,27 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createStaffUser } from "@/app/actions/staff"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { getStaffPerformance } from "@/app/actions/staff"
+import { createStaffUser, deleteStaffUser, getStaffPerformance } from "@/app/actions/staff"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
-export function StaffClient({ initialStaff }: { initialStaff: any[] }) {
+export function StaffClient({ initialStaff, currentUserRole }: { initialStaff: any[], currentUserRole: string | null }) {
     const [isOpen, setIsOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+    const [deleteId, setDeleteId] = useState<string | null>(null)
 
     // Performance Sheet State
     const [detailsOpen, setDetailsOpen] = useState(false)
@@ -68,6 +78,18 @@ export function StaffClient({ initialStaff }: { initialStaff: any[] }) {
             alert("Staff user created successfully!")
             setIsOpen(false)
         }
+    }
+
+    async function confirmDelete() {
+        if (!deleteId) return
+
+        const result = await deleteStaffUser(deleteId)
+        if (result.error) {
+            alert("Error deleting staff: " + result.error)
+        } else {
+            // refresh happens automatically via server action revalidatePath
+        }
+        setDeleteId(null)
     }
 
     return (
@@ -169,10 +191,16 @@ export function StaffClient({ initialStaff }: { initialStaff: any[] }) {
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem className="text-red-500">
-                                                        <Trash className="mr-2 h-4 w-4" /> Delete (Locked)
-                                                    </DropdownMenuItem>
+                                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                    {currentUserRole === 'admin' ? (
+                                                        <DropdownMenuItem onSelect={() => setDeleteId(staff.id)} className="text-red-500">
+                                                            <Trash className="mr-2 h-4 w-4" /> Delete User
+                                                        </DropdownMenuItem>
+                                                    ) : (
+                                                        <DropdownMenuItem className="text-muted-foreground" disabled>
+                                                            <Shield className="mr-2 h-4 w-4" /> Admin Only
+                                                        </DropdownMenuItem>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </TableCell>
@@ -183,6 +211,23 @@ export function StaffClient({ initialStaff }: { initialStaff: any[] }) {
                     </Table>
                 </CardContent>
             </Card>
+
+            <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Staff Member?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete the user account. They will no longer be able to log in.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                            Delete Account
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
                 <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { requireRole } from "@/lib/auth-checks"
 
 export async function getCustomerByCedula(cedula: string) {
     const supabase = await createClient()
@@ -111,10 +112,12 @@ export async function createCustomer(formData: FormData) {
 export async function deleteCustomer(id: string) {
     const supabase = await createClient()
 
-    // Check permission - maybe only managers/admins?
-    // For now let's reuse the requireRole logic or just check user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) return { error: "Unauthorized" }
+    // Strict Admin Check
+    try {
+        await requireRole(["admin"])
+    } catch (e: any) {
+        return { error: "Unauthorized: Admins only" }
+    }
 
     const { error } = await supabase
         .from("customers")

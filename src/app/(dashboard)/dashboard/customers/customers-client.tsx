@@ -41,8 +41,18 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
 import { createCustomer, deleteCustomer, getCustomerDetails } from "@/app/actions/customers"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
-export function CustomersClient({ initialCustomers }: { initialCustomers: any[] }) {
+export function CustomersClient({ initialCustomers, currentUserRole }: { initialCustomers: any[], currentUserRole: string | null }) {
     const router = useRouter()
     const [isOpen, setIsOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
@@ -52,12 +62,17 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: any[] 
     const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
     const [customerStats, setCustomerStats] = useState<any>(null)
     const [loadingStats, setLoadingStats] = useState(false)
+    const [deleteId, setDeleteId] = useState<string | null>(null)
 
     // Use passed data instead of mock
     const customers = initialCustomers.filter(c =>
         c.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (c.cedula && c.cedula.includes(searchTerm))
     )
+    // ...
+    // ... inside return ...
+    // ...
+
 
     async function handleRowClick(customer: any) {
         setSelectedCustomer(customer)
@@ -88,10 +103,16 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: any[] 
         }
     }
 
-    async function handleDelete(id: string) {
-        if (confirm("Are you sure?")) {
-            await deleteCustomer(id)
+    async function confirmDelete() {
+        if (!deleteId) return
+
+        const result = await deleteCustomer(deleteId)
+        if (result.error) {
+            alert("Error deleting customer: " + result.error)
+        } else {
+            router.refresh()
         }
+        setDeleteId(null)
     }
 
     return (
@@ -135,6 +156,23 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: any[] 
                         </form>
                     </DialogContent>
                 </Dialog>
+
+                <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the customer.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                                Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
 
             <Card>
@@ -189,20 +227,30 @@ export function CustomersClient({ initialCustomers }: { initialCustomers: any[] 
                                         <TableCell className="text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="h-8 w-8 p-0"
+                                                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                                    >
                                                         <span className="sr-only">Open menu</span>
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
+                                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                     <DropdownMenuItem>
                                                         <Pencil className="mr-2 h-4 w-4" /> Edit
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
-                                                    <DropdownMenuItem onClick={() => handleDelete(customer.id)} className="text-red-600">
-                                                        <Trash className="mr-2 h-4 w-4" /> Delete
-                                                    </DropdownMenuItem>
+                                                    {currentUserRole === 'admin' ? (
+                                                        <DropdownMenuItem onSelect={() => setDeleteId(customer.id)} className="text-red-600">
+                                                            <Trash className="mr-2 h-4 w-4" /> Delete
+                                                        </DropdownMenuItem>
+                                                    ) : (
+                                                        <DropdownMenuItem disabled className="text-muted-foreground opacity-50">
+                                                            <Trash className="mr-2 h-4 w-4" /> Delete (Admin Only)
+                                                        </DropdownMenuItem>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </TableCell>

@@ -38,11 +38,22 @@ import {
 import { Label } from "@/components/ui/label"
 import { createProduct, deleteProduct, updateProduct } from "@/app/actions/inventory"
 import { Badge } from "@/components/ui/badge"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export function ProductsClient({ initialProducts, categories }: { initialProducts: any[], categories: any[] }) {
     const [isOpen, setIsOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [editingProduct, setEditingProduct] = useState<any>(null)
+    const [deleteId, setDeleteId] = useState<string | null>(null)
 
     function handleEdit(product: any) {
         setEditingProduct(product)
@@ -59,8 +70,6 @@ export function ProductsClient({ initialProducts, categories }: { initialProduct
         setIsLoading(true)
         const formData = new FormData(event.currentTarget)
 
-        // In a real app we'd handle image file upload here (get presigned URL, upload, get public URL)
-
         const result = editingProduct
             ? await updateProduct(formData)
             : await createProduct(formData)
@@ -73,10 +82,14 @@ export function ProductsClient({ initialProducts, categories }: { initialProduct
         }
     }
 
-    async function handleDelete(id: string) {
-        if (confirm("Delete this product?")) {
-            await deleteProduct(id)
+    async function confirmDelete() {
+        if (!deleteId) return
+
+        const result = await deleteProduct(deleteId)
+        if (result.error) {
+            alert("Error deleting product: " + result.error)
         }
+        setDeleteId(null)
     }
 
     return (
@@ -140,6 +153,23 @@ export function ProductsClient({ initialProducts, categories }: { initialProduct
                         </form>
                     </DialogContent>
                 </Dialog>
+
+                <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete the product.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                                Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
 
             <Card>
@@ -192,11 +222,11 @@ export function ProductsClient({ initialProducts, categories }: { initialProduct
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                <DropdownMenuItem onClick={() => handleEdit(p)}>
+                                                <DropdownMenuItem onSelect={() => handleEdit(p)}>
                                                     <Pencil className="mr-2 h-4 w-4" /> Edit
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => handleDelete(p.id)} className="text-red-600">
+                                                <DropdownMenuItem onSelect={() => setDeleteId(p.id)} className="text-red-600">
                                                     <Trash className="mr-2 h-4 w-4" /> Delete
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>

@@ -14,10 +14,21 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { createCategory, deleteCategory } from "@/app/actions/inventory"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export function CategoriesClient({ initialCategories }: { initialCategories: any[] }) {
     const [isOpen, setIsOpen] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
+    const [deleteId, setDeleteId] = useState<string | null>(null)
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault()
@@ -40,10 +51,10 @@ export function CategoriesClient({ initialCategories }: { initialCategories: any
         }
     }
 
-    async function handleDelete(id: string) {
-        if (confirm("Are you sure? This might affect products linked to this category.")) {
-            await deleteCategory(id)
-        }
+    async function confirmDelete() {
+        if (!deleteId) return
+        await deleteCategory(deleteId)
+        setDeleteId(null)
     }
 
     return (
@@ -77,6 +88,23 @@ export function CategoriesClient({ initialCategories }: { initialCategories: any
                         </form>
                     </DialogContent>
                 </Dialog>
+
+                <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will permanently delete the category. This might affect products linked to this category.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+                                Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -95,7 +123,7 @@ export function CategoriesClient({ initialCategories }: { initialCategories: any
                             variant="destructive"
                             size="icon"
                             className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => handleDelete(cat.id)}
+                            onClick={() => setDeleteId(cat.id)}
                         >
                             <Trash className="h-3 w-3" />
                         </Button>
